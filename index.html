@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Web Talk</title>
+
+    <!-- LOCAL -->
+    <!-- <script src="/node_modules/jquery/dist/jquery.min.js"></script>
+        <script src="/node_modules/bootstrap/dist/js/bootstrap.bundle.js"></script>
+        <link rel="stylesheet" href="/node_modules/bootstrap/dist/css/bootstrap.min.css"/> -->
+    <!-- <script src="/node_modules/socket.io/client-dist/socket.io.js"></script> -->
+
+    <!-- CDN -->
+    <script
+      src="https://code.jquery.com/jquery-3.6.0.min.js"
+      integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4="
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/js/bootstrap.bundle.min.js"
+      integrity="sha384-U1DAWAznBHeqEIlVSCgzq+c9gqGAJn5c/t99JyeKa9xxaYpSvHU5awsuZVVFIhvj"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.2.0/socket.io.js"
+      integrity="sha512-WL6WGKMPBiM9PnHRYIn5YEtq0Z8XP4fkVb4qy7PP4vhmYQErJ/dySyXuFIMDf1eEYCXCrQrMJfkNwKc9gsjTjA=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-KyZXEAg3QhqLMpG8r+8fhAXLRk2vvoC2f3B09zVXn8CA5QIVfZOJ3BCsw2P0p/We"
+      crossorigin="anonymous"
+    />
+
+    <style>
+      .hr-sect {
+        display: flex;
+        flex-basis: 100%;
+        align-items: center;
+        color: rgba(0, 0, 0, 0.35);
+        font-size: 12px;
+        margin: 8px 0px;
+      }
+
+      .hr-sect::before,
+      .hr-sect::after {
+        content: "";
+        flex-grow: 1;
+        background: rgba(0, 0, 0, 0.35);
+        height: 1px;
+        font-size: 0px;
+        line-height: 0px;
+        margin: 0px 16px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div
+      style="margin-bottom: 60px"
+      class="list-group list-group-flush scrollarea"
+      id="ScrollList"
+    ></div>
+
+    <footer style="position: fixed; bottom: 0; width: 100%">
+      <div class="input-group">
+        <input
+          type="text"
+          style="margin-bottom: 10px; margin-left: 10px"
+          class="form-control"
+          id="MessageText"
+          onkeyup="InputEnterEvent()"
+        />
+        <button
+          type="button"
+          style="margin-bottom: 10px; margin-right: 10px"
+          class="btn btn-warning"
+          id="BtnMessageSend"
+          onclick="SendButtonEvent()"
+        >
+          전송
+        </button>
+      </div>
+    </footer>
+  </body>
+</html>
+
+<script>
+  // socket.io 서버에 접속한다
+  var socket = io();
+
+  $(function () {
+    DisplayDateLine();
+    GetNotificationPermission();
+
+    // 서버로부터의 메시지가 수신되면
+    socket.on("chat", function (data) {
+      DisplayReceiveMessage(data.msg, data.datetime);
+      DisplayNotification("새 메시지", data.msg);
+      AutoScroll();
+    });
+
+    function makeRandomName() {
+      var name = "";
+      var possible = "abcdefghijklmnopqrstuvwxyz";
+      for (var i = 0; i < 3; i++) {
+        name += possible.charAt(Math.floor(Math.random() * possible.length));
+      }
+      return name;
+    }
+  });
+
+  function GetNotificationPermission() {
+    if (!("Notification" in window)) {
+      console.log("알림을 지원하지 않는 브라우저 입니다.");
+    }
+
+    Notification.requestPermission(function (result) {
+      if (result == "denied") {
+        alert(
+          "알림을 차단하셨습니다.\n브라우저의 사이트 설정에서 변경하실 수 있습니다."
+        );
+        return false;
+      }
+    });
+  }
+
+  function DisplayNotification(title, msg) {
+    var options = {
+      icon: "https://abs.twimg.com/emoji/v1/72x72/1f514.png",
+      body: msg,
+    };
+
+    // 데스크탑 알림 요청
+    var notification = new Notification(title, options);
+
+    // 3초뒤 알람 닫기
+    setTimeout(function () {
+      notification.close();
+    }, 3000);
+  }
+
+  // 메시지 전송 버튼 클릭 이벤트
+  function SendButtonEvent() {
+    SendMessage();
+  }
+
+  // 메시지 입력 엔터 키 이벤트
+  function InputEnterEvent() {
+    if (window.event.keyCode == 13) {
+      SendMessage();
+    }
+  }
+
+  // 메시지 전송
+  function SendMessage() {
+    if ($("#MessageText").val() !== "") {
+      socket.emit("chat", { msg: DisplaySendMessage() });
+      AutoScroll();
+    }
+  }
+
+  // 자동 스크롤
+  function AutoScroll() {
+    window.scrollTo(0, document.body.scrollHeight);
+  }
+
+  // 타임 라인 표시
+  function DisplayDateLine() {
+    let MessageList = document.getElementById("ScrollList");
+    let DateLine = document.createElement("div");
+    let NowDateTime = new Date();
+
+    DateLine.setAttribute("class", "hr-sect");
+    DateLine.innerText = `${NowDateTime.getFullYear()}년 ${
+      NowDateTime.getMonth() + 1
+    }월 ${NowDateTime.getDate()}일`;
+
+    MessageList.appendChild(DateLine);
+  }
+
+  // 메시지 전송 표시
+  function DisplaySendMessage() {
+    let MessageList = document.getElementById("ScrollList");
+    let Message = $("#MessageText").val();
+    $("#MessageText").val("");
+
+    let MessageOrderDiv = document.createElement("div");
+    MessageOrderDiv.setAttribute("align", "right");
+
+    let MessageCardDiv = document.createElement("div");
+    MessageCardDiv.setAttribute("class", "card text-white bg-primary mb-3");
+    MessageCardDiv.setAttribute(
+      "style",
+      "max-width: 18rem; margin: 10px; text-align:left; clear:both; float:right;"
+    );
+
+    let MessageCardBody = document.createElement("div");
+    MessageCardBody.setAttribute("class", "card-body");
+    MessageCardBody.setAttribute("style", "width:auto;");
+
+    let MessageCardText = document.createElement("p");
+    MessageCardText.setAttribute("class", "card-text");
+    MessageCardText.innerText = Message;
+
+    // let MessageCardFooter = document.createElement("p");
+    // MessageCardFooter.setAttribute("style","font-size:10px; margin-left: 10px;");
+    // MessageCardFooter.innerText = datetime;
+
+    MessageCardBody.appendChild(MessageCardText);
+    MessageCardDiv.appendChild(MessageCardBody);
+    MessageOrderDiv.appendChild(MessageCardDiv);
+    // MessageOrderDiv.appendChild(MessageCardFooter);
+    MessageList.appendChild(MessageOrderDiv);
+
+    return Message;
+  }
+
+  // 메시지 수신 표시
+  function DisplayReceiveMessage(MessageText, datetime) {
+    let MessageList = document.getElementById("ScrollList");
+
+    let MessageOrderDiv = document.createElement("div");
+    MessageOrderDiv.setAttribute("align", "left");
+
+    let MessageCardDiv = document.createElement("div");
+    MessageCardDiv.setAttribute("class", "card text-white bg-secondary mb-3");
+    MessageCardDiv.setAttribute(
+      "style",
+      "max-width: 18rem; margin: 10px; text-align:left;clear:both; float:left;"
+    );
+
+    let MessageCardBody = document.createElement("div");
+    MessageCardBody.setAttribute("class", "card-body");
+
+    let MessageCardText = document.createElement("p");
+    MessageCardText.setAttribute("class", "card-text");
+    MessageCardText.innerText = MessageText;
+
+    let MessageCardFooter = document.createElement("p");
+    MessageCardFooter.setAttribute(
+      "style",
+      "font-size:10px; margin-left: 10px;"
+    );
+
+    //style="font-size:10px"
+    // MessageCardFooter.setAttribute("class","card-footer");
+    MessageCardFooter.innerText = datetime;
+
+    MessageCardBody.appendChild(MessageCardText);
+    MessageCardDiv.appendChild(MessageCardBody);
+    // MessageCardDiv.appendChild(MessageCardFooter);
+    MessageOrderDiv.appendChild(MessageCardDiv);
+    MessageOrderDiv.appendChild(MessageCardFooter);
+    MessageList.appendChild(MessageOrderDiv);
+  }
+</script>
