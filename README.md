@@ -2,7 +2,7 @@
 
 ### Thunderbol Talk
 
-* `Web Socket을 활용한 간단 채팅 프로젝트 입니다.`
+* `Web Socket` 을 활용한 간단 채팅 프로젝트 입니다.
 
 ## 🏷️ 기능(Function)
 
