@@ -25,4 +25,4 @@
 
 ## 📖 비고(Remark)
 * 간단한 채팅을 합니다.
-![Chat](./img/Thunderbol-Talk.png)
+* ![Chat](./img/Thunderbol-Talk.png)
